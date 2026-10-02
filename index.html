@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kingston evenings · Oct 6–7 2026</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --ink: #1c1915;
+    --muted: #5e584f;
+    --line: #d9d1c3;
+    --card: #fffcf7;
+    --hotel: #c4a35a;
+    --base: #5c6b73;
+    --west: #c47b2b;
+    --water: #1f7a72;
+    --down: #c45c3e;
+    --tue: #6d28d9;
+    --wed: #be185d;
+    --sight: #0f6e6a;
+    --trail: #2f6b3a;
+    --shadow: 0 10px 30px rgba(40, 32, 20, 0.08);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 500px at 10% -10%, #efe6d4 0%, transparent 50%),
+      var(--bg);
+  }
+  button, input, select { font-family: "Avenir Next", "Segoe UI", sans-serif; }
+  header {
+    padding: 22px 28px 10px;
+    display: flex;
+    gap: 22px;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  h1 {
+    font-size: 28px;
+    line-height: 1.05;
+    margin: 0 0 6px;
+    letter-spacing: -0.03em;
+  }
+  .sub { color: var(--muted); margin: 0; max-width: 760px; font-size: 15.5px; }
+  .sub strong { color: var(--ink); }
+  .weather {
+    display: flex;
+    gap: 10px;
+  }
+  .wx {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px 12px;
+    min-width: 168px;
+    box-shadow: var(--shadow);
+  }
+  .wx b { display: block; font-family: "Avenir Next", "Segoe UI", sans-serif; font-size: 13px; }
+  .wx span { color: var(--muted); font-size: 13px; }
+  .wx em { font-style: normal; font-weight: 700; }
+  .good { color: #1f7a46; }
+  .maybe { color: #9a5b12; }
+  .layout {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 14px;
+    padding: 12px 18px 18px;
+    height: calc(100vh - 118px);
+    min-height: 640px;
+  }
+  .panel, .mapwrap {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .panel { display: flex; flex-direction: column; min-height: 0; }
+  .controls { padding: 12px 12px 8px; border-bottom: 1px solid var(--line); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  input[type="search"], select {
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  input[type="search"] { flex: 1; min-width: 140px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .chip, .plan {
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .chip.on { color: #fff; border-color: transparent; }
+  .chip[data-cat="all"].on { background: #1c1915; }
+  .chip[data-cat="west"].on { background: var(--west); }
+  .chip[data-cat="water"].on { background: var(--water); }
+  .chip[data-cat="down"].on { background: var(--down); }
+  .chip[data-cat="tue"].on { background: var(--tue); }
+  .chip[data-cat="wed"].on { background: var(--wed); }
+  .chip[data-cat="sight"].on { background: var(--sight); }
+  .chip[data-cat="trail"].on { background: var(--trail); }
+  .chip[data-cat="base"].on { background: var(--base); }
+  .plans { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .plan { background: #f7f1e6; }
+  .plan.on { background: #1c1915; color: #fff; border-color: #1c1915; }
+  .list { overflow: auto; padding: 10px; }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    background: #fff;
+  }
+  .card.active { outline: 2px solid #1c1915; }
+  .card h3 { margin: 0 0 4px; font-size: 17px; }
+  .meta { font-family: "Avenir Next", "Segoe UI", sans-serif; font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .card p { margin: 8px 0; font-size: 14.5px; line-height: 1.35; }
+  .links a { font-family: "Avenir Next", "Segoe UI", sans-serif; font-size: 12px; color: #1f4e79; margin-right: 10px; }
+  .tag {
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    font-size: 11px;
+    border-radius: 999px;
+    padding: 2px 7px;
+    background: #f3eee4;
+  }
+  #map { height: 100%; min-height: 520px; }
+  .legend {
+    position: absolute;
+    z-index: 500;
+    left: 12px;
+    bottom: 12px;
+    background: rgba(255,252,247,0.94);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 10px;
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .note {
+    padding: 0 18px 22px;
+    color: var(--muted);
+    font-size: 13px;
+    max-width: 1100px;
+  }
+  .leaflet-popup-content { font-family: "Avenir Next", "Segoe UI", sans-serif; font-size: 13px; }
+  .leaflet-popup-content h3 { font-family: Georgia, serif; margin: 0 0 4px; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; height: auto; }
+    #map { height: 68vh; }
+    header { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Kingston evenings, Oct 6–7</h1>
+    <p class="sub">Base is <strong>Candlewood Suites, 205 Resource Rd</strong>. Courses at CFB Kingston, 8:00–16:00 Tue–Thu. Sunset is about <strong>6:40 p.m.</strong>, so a forest ride has to start as soon as you get out. Cab downtown is roughly 15–20 minutes and about $20–30 CAD.</p>
+  </div>
+  <div class="weather">
+    <div class="wx">
+      <b>Tue Oct 6 · patio looks decent</b>
+      <span>Mix of sun and cloud. High 14°C, evening near 8–11°C. <em class="good">Jacket, not a rain plan.</em></span>
+    </div>
+    <div class="wx">
+      <b>Wed Oct 7 · patio is a maybe</b>
+      <span>Milder, high 18°C, 30% showers and more wind. <em class="maybe">Have an indoor backup.</em></span>
+    </div>
+  </div>
+</header>
+<div class="layout">
+  <aside class="panel">
+    <div class="controls">
+      <div class="row">
+        <input id="q" type="search" placeholder="Search food, music, trails…" />
+        <select id="sort">
+          <option value="plan">Suggested first</option>
+          <option value="near">Closest to hotel</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+      <div class="chips" id="chips">
+        <button class="chip on" data-cat="all">All</button>
+        <button class="chip" data-cat="west">West end food</button>
+        <button class="chip" data-cat="water">Waterfront</button>
+        <button class="chip" data-cat="down">Downtown</button>
+        <button class="chip" data-cat="tue">Tue music</button>
+        <button class="chip" data-cat="wed">Wed vibe</button>
+        <button class="chip" data-cat="trail">Trails</button>
+        <button class="chip" data-cat="sight">Sights</button>
+        <button class="chip" data-cat="base">Hotel & base</button>
+      </div>
+      <div class="plans">
+        <button class="plan" data-plan="tue-easy">Tue: ride + Riverhead</button>
+        <button class="plan" data-plan="tue-show">Tue: Bahamas</button>
+        <button class="plan" data-plan="wed-water">Wed: waterfront</button>
+        <button class="plan" data-plan="wed-vibe">Wed: downtown room</button>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+  <div class="mapwrap" style="position:relative">
+    <div id="map"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+</div>
+<p class="note">Forecast is Environment Canada’s 11:00 a.m. EDT Friday Oct 2 issuance, so recheck Tuesday morning. Music calendars were thin for Wednesday: nothing ticketed matched a 30s bar night, so Wednesday pins are rooms that usually have a band, not a confirmed bill. Prices are CAD. Map tiles © OpenStreetMap contributors.</p>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+const HOTEL = [44.2774794, -76.5621105];
+const COLORS = {
+  hotel: "#c4a35a", base: "#5c6b73", west: "#c47b2b", water: "#1f7a72",
+  down: "#c45c3e", tue: "#6d28d9", wed: "#be185d", sight: "#0f6e6a", trail: "#2f6b3a"
+};
+const spots = [
+  { id:"hotel", cat:"base", name:"Candlewood Suites", kind:"Hotel", lat:44.2774794, lng:-76.5621105, addr:"205 Resource Rd, Kingston", hours:"Your base all week", price:"", why:"West-end business park, north of the 401. Riverhead is a 10-minute walk. Downtown is the opposite direction from the base.", url:"https://www.google.com/maps/search/?api=1&query=Candlewood+Suites+205+Resource+Road+Kingston", maps:"https://www.google.com/maps/search/?api=1&query=205+Resource+Road+Kingston+ON", tags:["home"], rank:0 },
+  { id:"cfb", cat:"base", name:"CFB Kingston · Vimy Barracks", kind:"Course", lat:44.2378182, lng:-76.4354379, addr:"Highway 2 east of downtown", hours:"Tue–Thu 8:00–16:00", price:"", why:"Pin is the Vimy Barracks area, east of downtown. Confirm the building on your joining instructions. You cross town to get back to the hotel, so a downtown dinner is on the way home.", url:"https://www.google.com/maps/search/?api=1&query=CFB+Kingston+Vimy+Barracks", maps:"https://www.google.com/maps/search/?api=1&query=Vimy+Barracks+Kingston", tags:["course"], rank:0 },
+  { id:"riverhead", cat:"west", name:"Riverhead Brewing", kind:"Brewery · closest food", lat:44.2730551, lng:-76.5674541, addr:"631 Fortune Cres, Unit 10", hours:"Tue 12–10, Wed 12–9", price:"Pizzas and share plates, roughly $16–28", why:"Best short ride home. Beer hall, onsite beer, pizzas (Riverhead Supreme, Angry Canadian) and nachos. Trivia and cornhole, not a late club. Walkable from the hotel.", url:"https://www.riverheadbrewing.com/", maps:"https://www.google.com/maps/search/?api=1&query=Riverhead+Brewing+631+Fortune+Crescent+Kingston", tags:["tue","wed","easy"], rank:1 },
+  { id:"spearhead", cat:"west", name:"Spearhead Brewing", kind:"Brewery · west end", lat:44.2416866, lng:-76.5693330, addr:"675 Development Dr", hours:"Check the taproom board", price:"Pints typically $8–11", why:"Second west-end brewery, about 10 minutes from the hotel. They host live music, trivia and patio nights. Worth a look if you want beer without going downtown. Confirm the Wednesday bill.", url:"https://spearheadbeer.com/", maps:"https://www.google.com/maps/search/?api=1&query=Spearhead+Brewing+675+Development+Drive+Kingston", tags:["wed","music-maybe"], rank:2 },
+  { id:"daft", cat:"down", name:"Daft Brewing", kind:"Brewery · on the way", lat:44.2386001, lng:-76.5059084, addr:"768 Princess St, Williamsville", hours:"Taproom, check site", price:"Pizza plus sour beers", why:"Halfway between the hotel and downtown on Princess. Small-batch sours and pizzas, garage-taproom feel. A sensible stop if you don’t want the full harbour trip.", url:"http://daftbrewing.com/", maps:"https://www.google.com/maps/search/?api=1&query=Daft+Brewing+768+Princess+Street+Kingston", tags:["tue","wed"], rank:3 },
+  { id:"wharf", cat:"water", name:"Wharf & Feather", kind:"Waterfront dinner", lat:44.2307025, lng:-76.4780822, addr:"2 Princess St", hours:"Dinner Tue–Sat 4–9 p.m. Happy hour 4–6", price:"OpenTable band: under $30 a head", why:"Best Tuesday waterfront bet. Harbour patio, gastro-pub plates, craft beer. Kitchen closes 9, so you are back at a decent hour. Book it. Domes if the wind is up.", url:"https://wharfandfeather.ca/", maps:"https://www.google.com/maps/search/?api=1&query=Wharf+and+Feather+2+Princess+Street+Kingston", tags:["tue","wed","patio"], rank:1 },
+  { id:"aqua", cat:"water", name:"AquaTerra", kind:"Waterfront · nicer", lat:44.2278135, lng:-76.4796959, addr:"1 Johnson St, in the Delta", hours:"Dinner service, reserve", price:"Mains often $32–52", why:"Lake Ontario through the windows, seasonal plates, the dress-up option. Worth it Wednesday if showers push you inside. Not a loud 30s room.", url:"https://www.marriott.com/en-us/hotels/ygkdl-delta-hotels-kingston-waterfront/dining/", maps:"https://www.google.com/maps/search/?api=1&query=AquaTerra+1+Johnson+Street+Kingston", tags:["tue","wed"], rank:2 },
+  { id:"pilot", cat:"water", name:"Pilot House", kind:"Harbour pub", lat:44.2289006, lng:-76.4822738, addr:"265 King St E", hours:"Pub hours, near the basin", price:"Fish and chips about $18–26", why:"Kingston institution beside Confederation Basin. Casual, not a scene. Good if Wharf is full and you still want the water.", url:"https://www.google.com/maps/search/?api=1&query=Pilot+House+265+King+Street+East+Kingston", maps:"https://www.google.com/maps/search/?api=1&query=Pilot+House+Kingston", tags:["tue","wed"], rank:4 },
+  { id:"kbc", cat:"down", name:"Kingston Brewing Company", kind:"Brewpub", lat:44.2291871, lng:-76.4810615, addr:"34 Clarence St", hours:"Downtown pub, patio", price:"Pub plates about $16–28", why:"Ontario’s oldest brewpub, in an 1800s telegraph office by Market Square. Dragon’s Breath ale, burgers, people-watching. Easy early night.", url:"https://www.kingstonbrewing.ca/", maps:"https://www.google.com/maps/search/?api=1&query=Kingston+Brewing+Company+34+Clarence+Street", tags:["tue","wed"], rank:3 },
+  { id:"sitw", cat:"down", name:"Something in the Water + Ghost Taco", kind:"Brewery · 30s room", lat:44.2326011, lng:-76.4882025, addr:"275 Princess St", hours:"Taproom evenings", price:"Tacos about $6–9, pints $8–11", why:"Closest thing downtown to the vibe you described: brewery in an old garage, Ghost Taco in the building, not a jazz room. Good Wednesday if Musiikki’s bill is wrong.", url:"https://somethingbrewing.ca/pages/kingston", maps:"https://www.google.com/maps/search/?api=1&query=Something+in+the+Water+275+Princess+Street+Kingston", tags:["wed","tue"], rank:2 },
+  { id:"piggy", cat:"down", name:"Chez Piggy", kind:"Dinner institution", lat:44.2312673, lng:-76.4813060, addr:"68 Princess St", hours:"Tue–Sat from 11:30, kitchen to about 9", price:"Mains often $28–42", why:"Limestone stable, local produce, the meal people actually recommend. Quieter than a brewery. Book, then walk the square.", url:"https://www.chezpiggy.ca/", maps:"https://www.google.com/maps/search/?api=1&query=Chez+Piggy+68+Princess+Street+Kingston", tags:["tue","wed"], rank:3 },
+  { id:"atomica", cat:"down", name:"Atomica", kind:"Cocktails and pasta", lat:44.2307, lng:-76.4824, addr:"71 Brock St", hours:"Tue–Wed 11:30 a.m.–9 p.m.", price:"$$, cocktails extra", why:"Industrial room, patio, pasta and pizza, a younger crowd than Chez Piggy. Closes 9, which fits the 8 a.m. start.", url:"https://www.google.com/maps/search/?api=1&query=Atomica+Kitchen+71+Brock+Street+Kingston", maps:"https://www.google.com/maps/search/?api=1&query=Atomica+Brock+Street+Kingston", tags:["wed","tue"], rank:3 },
+  { id:"toucan", cat:"tue", name:"The Toucan", kind:"Tue live room", lat:44.2314, lng:-76.4817, addr:"76 Princess St", hours:"Tue live music; open to 2 a.m. — leave earlier", price:"Tue fish and chips $11.99 / $14.99 + a drink", why:"Irish local since 1986. They program live music Tuesday, Thursday, Friday and Saturday, so Tuesday is a real option if Bahamas feels too seated. Not their usual Wednesday. Do not stay for last call.", url:"http://www.thetoucan.ca/", maps:"https://www.google.com/maps/search/?api=1&query=The+Toucan+76+Princess+Street+Kingston", tags:["tue","pub"], rank:2 },
+  { id:"bahamas", cat:"tue", name:"Bahamas + Boy Golden", kind:"Tue ticketed show", lat:44.2299435, lng:-76.4884, addr:"The Spire, 82 Sydenham St", hours:"Doors 6:30, show 7:30", price:"About $55 CAD", why:"The real Tuesday night. Afie Jurvanen’s indie band in a converted church, seated, all ages, warm rather than rowdy. Out around 10 if you skip the linger. Cab home west after.", url:"https://thespirekingston.org/event/bahamas-presents-industrial-sport-sound-tour/", maps:"https://www.google.com/maps/search/?api=1&query=The+Spire+82+Sydenham+Street+Kingston", tags:["tue","ticket"], rank:1 },
+  { id:"musiikki", cat:"wed", name:"Musiikki Café", kind:"Wed live bet", lat:44.230725, lng:-76.482222, addr:"73 Brock St", hours:"Music most nights 8–11 p.m.", price:"Many shows free or pay what you can", why:"Best Wednesday guess. Upstairs stage, whiskey, local beer, usually done by 11. They do host jazz some nights (Mondays especially), so check the board before you commit.", url:"https://kingstonlive.ca/musiikki_cafe", maps:"https://www.google.com/maps/search/?api=1&query=Musiikki+Cafe+73+Brock+Street+Kingston", tags:["wed","music"], rank:1 },
+  { id:"ale", cat:"wed", name:"The Ale House", kind:"Princess St room", lat:44.2348, lng:-76.4965, addr:"393 Princess St", hours:"Evening, check the board", price:"Pub food and pints", why:"Bigger room on Princess, between Daft and downtown, so a shorter cab than the harbour. Used for ticketed shows later in the week. Nothing listed for Oct 7, but it is the 30s bar if Musiikki is quiet.", url:"https://www.google.com/maps/search/?api=1&query=Ale+House+393+Princess+Street+Kingston", maps:"https://www.google.com/maps/search/?api=1&query=The+Ale+House+Kingston", tags:["wed"], rank:3 },
+  { id:"svaha", cat:"wed", name:"Svāhā! at the Grand", kind:"Not the vibe", lat:44.2320861, lng:-76.4864146, addr:"Kingston Grand Theatre, 218 Princess", hours:"Wed Oct 7, 7:30 p.m.", price:"Pay what you want", why:"Listed so you don’t chase it. Contemporary dance, not a bar night. Skip unless someone in the group actually wants a show.", url:"https://www.kingstongrand.ca/events/svaha", maps:"https://www.google.com/maps/search/?api=1&query=Kingston+Grand+Theatre", tags:["wed","skip"], rank:9 },
+  { id:"kp", cat:"trail", name:"K&P Trail · Binnington", kind:"Gravel rail trail", lat:44.2711127, lng:-76.5287583, addr:"Binnington Court at Dalton Ave", hours:"Ride 4:40–6:15, then dinner", price:"Free", why:"This is the forest gravel ride. Stone-dust rail bed, wetlands, rock cuts, fields. About 3 km from the hotel. Out-and-back toward Sydenham Road. Lights on the bike. Sunset ~6:40.", url:"https://www.cityofkingston.ca/activities-and-recreation/parks-trails-and-sports-fields-and-courts/trails/", maps:"https://www.google.com/maps/search/?api=1&query=K+and+P+Trail+Binnington+Court+Kingston", tags:["tue","wed","gravel"], rank:1 },
+  { id:"lemoine", cat:"trail", name:"Lemoine Point", kind:"Forest shoreline", lat:44.2235, lng:-76.608, addr:"North gate: 1441 Coverdale Dr", hours:"Daylight only", price:"Free", why:"Woods and Lake Ontario shore, west of the airport. Bikes only on Trail 5 (blue), 2.9 km. Other trails are walk-only. Closes at dark, so it is a short spin, not the gravel epic.", url:"https://cataraquiconservation.ca/pages/lemoine-point-conservation-area", maps:"https://www.google.com/maps/search/?api=1&query=Lemoine+Point+Conservation+Area+Coverdale+Drive", tags:["forest"], rank:2 },
+  { id:"littlecat", cat:"sight", name:"Little Cataraqui Creek", kind:"Tue guided walk", lat:44.2851719, lng:-76.5118102, addr:"Perth Road conservation area", hours:"Fall guided walk listed Oct 6", price:"Check the conservation site", why:"Forest walk north of the hotel. Listed for Tuesday. Confirm the time. If it is daytime, you will miss it. Dusk closure either way.", url:"https://cataraquiconservation.ca/pages/events", maps:"https://www.google.com/maps/search/?api=1&query=Little+Cataraqui+Creek+Conservation+Area", tags:["tue"], rank:4 },
+  { id:"basin", cat:"sight", name:"Confederation Basin", kind:"Harbour walk", lat:44.2283944, lng:-76.4788288, addr:"Clarence St at the water", hours:"Open evening", price:"Free", why:"Twenty-minute loop before dinner: marina, City Hall limestone, the holiday lights aren’t up yet but the harbour still works at blue hour. Pair with Wharf & Feather.", url:"https://www.visitkingston.ca/", maps:"https://www.google.com/maps/search/?api=1&query=Confederation+Basin+Kingston", tags:["tue","wed","walk"], rank:1 },
+  { id:"murney", cat:"sight", name:"Murney Tower", kind:"Martello tower", lat:44.222275, lng:-76.4904137, addr:"King St W at Barrie", hours:"Exterior evening, museum likely closed", price:"Free to walk past", why:"Round stone tower on the breakwater. Good photo stop on the waterfront path if you have 15 minutes after parking downtown. Interior won’t be open at 7.", url:"https://www.google.com/maps/search/?api=1&query=Murney+Tower+Kingston", maps:"https://www.google.com/maps/search/?api=1&query=Murney+Tower+Kingston", tags:["walk"], rank:3 },
+  { id:"hall", cat:"sight", name:"City Hall & Market Square", kind:"Limestone core", lat:44.2297, lng:-76.4801, addr:"216 Ontario St", hours:"Square is open", price:"Free", why:"The postcard. Walk it between Kingston Brewing and the water. Shops will be closing, the square will not.", url:"https://www.google.com/maps/search/?api=1&query=Kingston+City+Hall", maps:"https://www.google.com/maps/search/?api=1&query=Springer+Market+Square+Kingston", tags:["walk"], rank:2 },
+  { id:"fort", cat:"sight", name:"Fort Henry", kind:"Closed these evenings", lat:44.2306, lng:-76.4603, addr:"1 Fort Henry Dr", hours:"Fort Fright is not on Oct 6 or 7", price:"Fright is $25 + HST other nights", why:"Main season is over. Fort Fright runs Oct 2–4, then 8–11, so Tuesday and Wednesday are the gap. Don’t plan on it. Thursday night it is back on, after the course.", url:"https://www.forthenry.com/visit/admissions/", maps:"https://www.google.com/maps/search/?api=1&query=Fort+Henry+Kingston", tags:["skip"], rank:8 }
+];
+const PLANS = {
+  "tue-easy": ["kp","riverhead","spearhead"],
+  "tue-show": ["bahamas","wharf","toucan","basin"],
+  "wed-water": ["wharf","aqua","basin","hall","pilot"],
+  "wed-vibe": ["musiikki","sitw","atomica","ale","daft"]
+};
+function km(a, b) {
+  const R = 6371, dLat = (b[0]-a[0]) * Math.PI/180, dLng = (b[1]-a[1]) * Math.PI/180;
+  const s = Math.sin(dLat/2)**2 + Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
+}
+spots.forEach(s => s.dist = km(HOTEL, [s.lat, s.lng]));
+const map = L.map("map", { scrollWheelZoom: true }).setView([44.25, -76.51], 12);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap"
+}).addTo(map);
+const layer = L.layerGroup().addTo(map);
+const markers = {};
+function icon(color) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  });
+}
+spots.forEach(s => {
+  const m = L.marker([s.lat, s.lng], { icon: icon(COLORS[s.cat] || "#333") }).addTo(layer);
+  m.bindPopup(`<h3>${s.name}</h3><div>${s.kind} · ${s.dist.toFixed(1)} km from hotel</div><p>${s.why}</p><a href="${s.url}" target="_blank" rel="noopener">Site</a> · <a href="${s.maps}" target="_blank" rel="noopener">Directions</a>`);
+  m.on("click", () => select(s.id, false));
+  markers[s.id] = m;
+});
+let cat = "all", plan = null, active = null;
+function visible() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  return spots.filter(s => {
+    if (plan && !PLANS[plan].includes(s.id) && s.id !== "hotel") return false;
+    if (!plan && cat !== "all" && s.cat !== cat) return false;
+    if (!q) return true;
+    return (s.name + s.kind + s.why + s.addr).toLowerCase().includes(q);
+  });
+}
+function render() {
+  const sort = document.getElementById("sort").value;
+  const rows = visible().slice().sort((a, b) => {
+    if (sort === "near") return a.dist - b.dist;
+    if (sort === "name") return a.name.localeCompare(b.name);
+    return a.rank - b.rank || a.dist - b.dist;
+  });
+  document.getElementById("list").innerHTML = rows.map(s => `
+    <article class="card ${active===s.id?"active":""}" data-id="${s.id}">
+      <div class="meta"><span class="dot" style="background:${COLORS[s.cat]}"></span><span>${s.kind}</span><span>${s.dist.toFixed(1)} km</span>${s.price?`<span class="tag">${s.price}</span>`:""}</div>
+      <h3>${s.name}</h3>
+      <p>${s.why}</p>
+      <div class="meta">${s.addr} · ${s.hours}</div>
+      <div class="links"><a href="${s.url}" target="_blank" rel="noopener">Website</a><a href="${s.maps}" target="_blank" rel="noopener">Directions</a></div>
+    </article>`).join("") || "<p style='padding:12px'>Nothing in this filter.</p>";
+  document.querySelectorAll(".card").forEach(el => el.onclick = () => select(el.dataset.id, true));
+  const ids = new Set(rows.map(s => s.id));
+  Object.entries(markers).forEach(([id, m]) => {
+    if (ids.has(id)) { if (!layer.hasLayer(m)) layer.addLayer(m); }
+    else if (layer.hasLayer(m)) layer.removeLayer(m);
+  });
+  if (rows.length) {
+    const b = L.latLngBounds(rows.map(s => [s.lat, s.lng]));
+    map.fitBounds(b.pad(0.25));
+  }
+}
+function select(id, pan) {
+  active = id;
+  render();
+  const s = spots.find(x => x.id === id);
+  if (pan) { map.setView([s.lat, s.lng], 15); markers[id].openPopup(); }
+  const card = document.querySelector(`.card[data-id="${id}"]`);
+  if (card) card.scrollIntoView({ block: "nearest" });
+}
+document.getElementById("chips").onclick = e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  plan = null;
+  document.querySelectorAll(".plan").forEach(p => p.classList.remove("on"));
+  document.querySelectorAll(".chip").forEach(c => c.classList.remove("on"));
+  b.classList.add("on");
+  cat = b.dataset.cat;
+  render();
+};
+document.querySelector(".plans").onclick = e => {
+  const b = e.target.closest(".plan"); if (!b) return;
+  const next = b.dataset.plan === plan ? null : b.dataset.plan;
+  plan = next;
+  document.querySelectorAll(".plan").forEach(p => p.classList.toggle("on", p === b && next));
+  if (next) {
+    document.querySelectorAll(".chip").forEach(c => c.classList.remove("on"));
+  } else {
+    document.querySelector('.chip[data-cat="all"]').classList.add("on");
+    cat = "all";
+  }
+  render();
+};
+document.getElementById("q").oninput = render;
+document.getElementById("sort").onchange = render;
+document.getElementById("legend").innerHTML = [
+  ["hotel","Hotel"],["base","Base"],["west","West-end food"],["water","Waterfront"],
+  ["down","Downtown"],["tue","Tuesday music"],["wed","Wednesday vibe"],["trail","Trail"],["sight","Sight"]
+].map(([k,l]) => `<div><span class="dot" style="background:${COLORS[k]}"></span> ${l}</div>`).join("");
+render();
+</script>
+</body>
+</html>
